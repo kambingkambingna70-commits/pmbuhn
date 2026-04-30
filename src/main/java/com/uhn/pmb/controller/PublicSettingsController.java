@@ -1,103 +1,63 @@
 package com.uhn.pmb.controller;
 
-import com.uhn.pmb.entity.ContactInfo;
-import com.uhn.pmb.entity.SystemLink;
-import com.uhn.pmb.repository.ContactInfoRepository;
-import com.uhn.pmb.repository.SystemLinkRepository;
+import com.uhn.pmb.service.SystemSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/public/settings")
 @RequiredArgsConstructor
 public class PublicSettingsController {
-    
-    private final ContactInfoRepository contactInfoRepo;
-    private final SystemLinkRepository systemLinkRepo;
-    
-    // ===== PUBLIC ENDPOINTS (No Auth Required) =====
-    
+
+    private final SystemSettingsService systemSettingsService;
+
     @GetMapping("/contact-info")
     public ResponseEntity<?> getContactInfo() {
         try {
-            List<ContactInfo> contacts = contactInfoRepo.findAll();
-            if (contacts.isEmpty()) {
-                return ResponseEntity.ok(new HashMap<String, Object>() {{
-                    put("success", true);
-                    put("message", "No contact info");
-                    put("data", null);
-                }});
+            var opt = systemSettingsService.getContactInfo();
+            if (opt.isEmpty()) {
+                return ResponseEntity.ok(Map.of("success", true, "message", "No contact info", "data", (Object)null));
             }
-            return ResponseEntity.ok(new HashMap<String, Object>() {{
-                put("success", true);
-                put("data", contacts.get(0));
-            }});
+            return ResponseEntity.ok(Map.of("success", true, "data", opt.get()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new HashMap<String, Object>() {{
-                put("success", false);
-                put("message", e.getMessage());
-            }});
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-    
+
     @GetMapping("/system-links")
     public ResponseEntity<?> getSystemLinksPublic() {
         try {
-            List<SystemLink> links = systemLinkRepo.findByIsActiveTrue();
-            return ResponseEntity.ok(new HashMap<String, Object>() {{
-                put("success", true);
-                put("data", links);
-                put("total", links.size());
-            }});
+            var links = systemSettingsService.getActiveSystemLinks();
+            return ResponseEntity.ok(Map.of("success", true, "data", links, "total", links.size()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new HashMap<String, Object>() {{
-                put("success", false);
-                put("message", e.getMessage());
-            }});
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-    
+
     @GetMapping("/system-links/name/{name}")
     public ResponseEntity<?> getSystemLinkByName(@PathVariable String name) {
         try {
-            java.util.Optional<SystemLink> optLink = systemLinkRepo.findByLinkName(name);
-            if (optLink.isPresent()) {
-                HashMap<String, Object> resp = new HashMap<>();
-                resp.put("success", true);
-                resp.put("data", optLink.get());
-                return ResponseEntity.ok(resp);
-            } else {
-                HashMap<String, Object> resp = new HashMap<>();
-                resp.put("success", false);
-                resp.put("message", "Link not found: " + name);
-                return ResponseEntity.ok(resp);
+            var opt = systemSettingsService.getSystemLinkByName(name);
+            if (opt.isPresent()) {
+                return ResponseEntity.ok(Map.of("success", true, "data", opt.get()));
             }
+            return ResponseEntity.ok(Map.of("success", false, "message", "Link not found: " + name));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new HashMap<String, Object>() {{
-                put("success", false);
-                put("message", e.getMessage());
-            }});
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-    
+
     @GetMapping("/system-links/type/{type}")
     public ResponseEntity<?> getSystemLinksByType(@PathVariable String type) {
         try {
-            List<SystemLink> links = systemLinkRepo.findByLinkType(type);
-            return ResponseEntity.ok(new HashMap<String, Object>() {{
-                put("success", true);
-                put("data", links);
-                put("total", links.size());
-            }});
+            var links = systemSettingsService.getSystemLinksByType(type);
+            return ResponseEntity.ok(Map.of("success", true, "data", links, "total", links.size()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(new HashMap<String, Object>() {{
-                put("success", false);
-                put("message", e.getMessage());
-            }});
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }

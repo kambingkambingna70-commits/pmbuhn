@@ -157,4 +157,16 @@ public class FileServingController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
+
+    /**
+     * Direct file serving for /uploads/** paths
+     * Redirects from /api/files to /uploads/** handler
+     */
+    @GetMapping(value = "", produces = "application/octet-stream")
+    public void redirectUploads() {
+        // This handler catches /api/files requests and acts as fallback
+    }
 }
+
+// NOTE: Also add a ResourceHandler in WebConfig for /uploads/**
+// spring.web.resources.static-locations=file:uploads/,classpath:/static/

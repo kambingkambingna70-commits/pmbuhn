@@ -2395,8 +2395,8 @@
                 
                 console.log('📊 Student ID retrieved:', studentId);
                 
-                // <i class="fas fa-thumbtack"></i> STEP 2: Fetch ValidationStatusTracker from new API endpoint (SINGLE SOURCE OF TRUTH)
-                const trackerRes = await fetch(`/admin/api/validation-status-tracker/student/${studentId}`, {
+                // STEP 2: Fetch ValidationStatus from CAMABA-accessible endpoint (SINGLE SOURCE OF TRUTH)
+                const trackerRes = await fetch(`/api/camaba/validation-status`, {
                     headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 
@@ -2408,6 +2408,11 @@
                 
                 const trackerData = await trackerRes.json();
                 console.log('✅ ValidationStatusTracker loaded:', trackerData);
+                
+                if (!trackerData.found) {
+                    updateValidationStatusDisplay('NOT_STARTED', null);
+                    return;
+                }
                 
                 // Map ValidationStatusEnum to display format
                 // Database values: NOT_STARTED, MENUNGGU, DIVALIDASI, DITOLAK, REVISI
@@ -3259,37 +3264,29 @@
                 const result = await response.json();
                 console.log('✅ Revision saved:', result);
                 
-                // 2️⃣ UPDATE VALIDATION STATUS TO MENUNGGU_VALIDASI (if formId available)
-                const formId = result.id || result.formId;
+                // 2️⃣ UPDATE REPAIR STATUS TO SUDAH_PERBAIKAN
                 let statusUpdateSuccess = false;
-                
-                if (formId) {
-                    try {
-                        console.log('📤 Attempting to update validation status with formId:', formId);
-                        const statusResponse = await fetch(`/api/camaba/submit-revision/${formId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': 'Bearer ' + authToken,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({})
-                        });
-                        
-                        console.log('📡 Status API Response:', statusResponse.status, statusResponse.statusText);
-                        
-                        if (statusResponse.ok) {
-                            const statusResult = await statusResponse.json();
-                            console.log('✅ Validation status updated to MENUNGGU_VALIDASI:', statusResult);
-                            statusUpdateSuccess = true;
-                        } else {
-                            const errorText = await statusResponse.text();
-                            console.warn('⚠️ Status API returned error:', statusResponse.status, errorText);
+                try {
+                    console.log('📤 Updating repair status to SUDAH_PERBAIKAN...');
+                    const statusResponse = await fetch(`/api/camaba/repair-status`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + authToken
                         }
-                    } catch (statusErr) {
-                        console.warn('⚠️ Status update error (network/parsing issue):', statusErr);
+                    });
+                    
+                    console.log('📡 Repair Status API Response:', statusResponse.status, statusResponse.statusText);
+                    
+                    if (statusResponse.ok) {
+                        const statusResult = await statusResponse.json();
+                        console.log('✅ Repair status updated to SUDAH_PERBAIKAN:', statusResult);
+                        statusUpdateSuccess = true;
+                    } else {
+                        const errorText = await statusResponse.text();
+                        console.warn('⚠️ Repair status update returned error:', statusResponse.status, errorText);
                     }
-                } else {
-                    console.warn('⚠️ No formId found in response, cannot update status');
+                } catch (statusErr) {
+                    console.warn('⚠️ Repair status update error:', statusErr);
                 }
                 
                 // <i class="fas fa-check-circle text-success"></i> NEW: Hide modal first
@@ -3626,45 +3623,18 @@
                     return;
                 }
                 
-                // Get student profile to find studentId
-                const profileRes = await fetch('/api/camaba/profile', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
+                console.log('📝 Calling API to set repairStatus to SUDAH_PERBAIKAN...');
                 
-                if (!profileRes.ok) {
- alert(' Gagal mengambil data profil');
-                    return;
-                }
-                
-                const profileData = await profileRes.json();
-                const student = profileData.data || profileData;
-                const studentId = student?.id || student?.studentId;
-                
-                if (!studentId) {
- alert(' Student ID tidak ditemukan');
-                    return;
-                }
-                
-                console.log('📝 Calling API to set repairStatus to SUDAH_PERBAIKAN for studentId:', studentId);
-                
-                // <i class="fas fa-check-circle text-success"></i> Log repairStatus value
-                const repairStatus = 'SUDAH_PERBAIKAN';
-                console.log('🔧 repairStatus VALUE:', repairStatus);
-                console.log('🔧 repairStatus Type:', typeof repairStatus);
-                
-                // <i class="fas fa-check-circle text-success"></i> Call API to update repair status
-                const updateRes = await fetch(`/admin/api/form-validations/student/${studentId}/repair-status`, {
+                // Call CAMABA-accessible endpoint (no studentId needed, extracted from JWT)
+                const updateRes = await fetch(`/api/camaba/repair-status`, {
                     method: 'PUT',
                     headers: { 
-                        'Authorization': 'Bearer ' + authToken,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ repairStatus: repairStatus })
+                        'Authorization': 'Bearer ' + authToken
+                    }
                 });
                 
                 console.log('📊 Update API Response Status:', updateRes.status);
-                console.log('📊 Content-Type:', updateRes.headers.get('content-type'));
-                console.log('✅ repairStatus telah dikirim ke endpoint:', updateRes.url || `/admin/api/form-validations/student/${studentId}/repair-status`);
+                console.log('✅ repairStatus telah dikirim ke endpoint: /api/camaba/repair-status');
                 
                 if (!updateRes.ok) {
                     // <i class="fas fa-check-circle text-success"></i> FIX: Check if response has valid JSON before parsing
@@ -5410,18 +5380,6 @@
                                         <i class="fas fa-download"></i> Download PDF
                                     </a>
                                 </div>` : ''}
-                                ${ktmSementaraFile ? `
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
-                                    <a href="/api/files/view/${ktmSementaraFile}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: #3498db; color: white; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px;">
-                                        <i class="fas fa-eye"></i> Lihat KTM Sementara
-                                    </a>
-                                    <a href="/api/files/view/${ktmSementaraFile}?download=true" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: #27ae60; color: white; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px;">
-                                        <i class="fas fa-download"></i> Download PDF
-                                    </a>
-                                </div>` : ''}
-                                <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-                                    <i class="fas fa-info-circle"></i> Klik "Lihat" untuk membuka di tab baru, atau "Download" untuk mengunduh file
-                                </p>
                             </div>
                             ` : `
                             <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-left: 4px solid #ccc; border-radius: 4px;">
@@ -5654,9 +5612,6 @@
                             <div class="modal-footer" style="background: #f9f9f9;">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                                     <i class="fas fa-times"></i> Tutup
-                                </button>
-                                <button type="button" class="btn btn-warning" data-bs-dismiss="modal" onclick="editReenrollment()">
-                                    <i class="fas fa-edit"></i> Edit Data
                                 </button>
                             </div>
                         </div>

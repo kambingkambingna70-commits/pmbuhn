@@ -1,5 +1,6 @@
 package com.uhn.pmb.service;
 
+import com.uhn.pmb.dto.HasilAkhirRegistrationRequest;
 import com.uhn.pmb.entity.*;
 import com.uhn.pmb.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -273,5 +274,57 @@ public class HasilAkhirService {
             return false;
         }
         return hasilAkhirRepository.existsByStudent(student);
+    }
+
+    /**
+     * Update nomor registrasi and BRIVA number on existing atau new hasil akhir.
+     * Called from admin validation when manually assigning registration numbers.
+     */
+    @Transactional
+    public HasilAkhir updateRegistrationNumberAndBriva(Long formValidationId, HasilAkhirRegistrationRequest request) {
+        FormValidation validation = formValidationRepository.findById(formValidationId)
+                .orElseThrow(() -> new RuntimeException("Form validation tidak ditemukan"));
+
+        AdmissionForm form = validation.getAdmissionForm();
+        if (form == null || form.getStudent() == null) {
+            throw new RuntimeException("Student atau form tidak ditemukan");
+        }
+
+        log.info("🔍 [HASIL-AKHIR-REQUEST] nomorRegistrasi: '{}' | brivaNumber: '{}'",
+                request.getNomorRegistrasi(), request.getBrivaNumber());
+
+        Optional<HasilAkhir> hasilAkhirOpt = hasilAkhirRepository.findByStudent(form.getStudent());
+        HasilAkhir hasilAkhir = hasilAkhirOpt.orElseGet(() -> {
+            HasilAkhir ha = new HasilAkhir();
+            ha.setStudent(form.getStudent());
+            ha.setUser(form.getStudent().getUser());
+            return ha;
+        });
+
+        if (request.getNomorRegistrasi() != null && !request.getNomorRegistrasi().isEmpty()) {
+            hasilAkhir.setNomorRegistrasi(request.getNomorRegistrasi());
+        } else if (hasilAkhir.getNomorRegistrasi() == null || hasilAkhir.getNomorRegistrasi().isEmpty()) {
+            String autoReg = "REG-" + java.time.LocalDate.now().toString().replace("-", "")
+                    + "-" + String.format("%06d", formValidationId);
+            hasilAkhir.setNomorRegistrasi(autoReg);
+        }
+
+        String brivaNumberToSave = request.getBrivaNumber();
+        if (brivaNumberToSave != null && !brivaNumberToSave.trim().isEmpty()
+                && !brivaNumberToSave.equals("(Belum ada BRIVA)")) {
+            hasilAkhir.setBrivaNumber(brivaNumberToSave.trim());
+        } else if (hasilAkhir.getBrivaNumber() == null || hasilAkhir.getBrivaNumber().equals("N/A")) {
+            hasilAkhir.setBrivaNumber("PENDING_" + System.currentTimeMillis());
+        }
+
+        if (request.getJumlahCicilan() != null && request.getJumlahCicilan() > 0) {
+            hasilAkhir.setJumlahCicilan(request.getJumlahCicilan());
+        } else if (hasilAkhir.getJumlahCicilan() == null) {
+            hasilAkhir.setJumlahCicilan(1);
+        }
+
+        HasilAkhir saved = hasilAkhirRepository.save(hasilAkhir);
+        log.info("✅ [HASIL-AKHIR] Saved registration number and BRIVA for formValidation {}", formValidationId);
+        return saved;
     }
 }

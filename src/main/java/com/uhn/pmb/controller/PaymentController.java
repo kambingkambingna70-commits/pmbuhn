@@ -1,29 +1,24 @@
 package com.uhn.pmb.controller;
 
 import com.uhn.pmb.dto.UniversityBankAccountDTO;
-import com.uhn.pmb.entity.*;
-import com.uhn.pmb.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.uhn.pmb.entity.UniversityBankAccount;
+import com.uhn.pmb.repository.UniversityBankAccountRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/payment")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PaymentController {
 
-    @Autowired
-    private UniversityBankAccountRepository universityBankAccountRepository;
+    private final UniversityBankAccountRepository universityBankAccountRepository;
 
-    // ==================== GET BANK ACCOUNTS ====================
-    
-    /**
-     * GET /api/payment/bank-accounts
-     * Mendapatkan daftar rekening universitas yang aktif
-     */
     @GetMapping("/bank-accounts")
     public ResponseEntity<List<UniversityBankAccountDTO>> getActiveBankAccounts() {
         try {

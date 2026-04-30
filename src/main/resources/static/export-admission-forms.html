@@ -70,7 +70,6 @@
                         <th>Program Studi 1</th>
                         <th>Program Studi 2</th>
                         <th>Program Studi 3</th>
-                        <th>Foto</th>
                         <th>Dibuat</th>
                     </tr>
                 </thead>
@@ -133,9 +132,6 @@
                     <td>${row.programStudi1}</td>
                     <td>${row.programStudi2}</td>
                     <td>${row.programStudi3}</td>
-                    <td>
-                        ${row.photoIdPath ? `<a href="${row.photoIdPath}" target="_blank" class="photo-link">View</a>` : '-'}
-                    </td>
                     <td>${new Date(row.createdAt).toLocaleDateString('id-ID')}</td>
                 `;
                 tbody.appendChild(tr);
@@ -143,7 +139,7 @@
         }
 
         function downloadCSV() {
-            const headers = ['No', 'Nama', 'NIK', 'Email', 'No. Telepon', 'Tempat Lahir', 'Tanggal Lahir', 'Jenis Kelamin', 'Agama', 'Kota', 'Provinsi', 'Asal Sekolah', 'Jurusan Sekolah', 'Program Studi 1', 'Program Studi 2', 'Program Studi 3', 'Foto', 'Dibuat'];
+            const headers = ['No', 'Nama', 'NIK', 'Email', 'No. Telepon', 'Tempat Lahir', 'Tanggal Lahir', 'Jenis Kelamin', 'Agama', 'Kota', 'Provinsi', 'Asal Sekolah', 'Jurusan Sekolah', 'Program Studi 1', 'Program Studi 2', 'Program Studi 3', 'Dibuat'];
             
             let csv = headers.join(',') + '\n';
             tableData.forEach((row, index) => {
@@ -164,7 +160,6 @@
                     row.programStudi1,
                     row.programStudi2,
                     row.programStudi3,
-                    row.photoIdPath || '-',
                     new Date(row.createdAt).toLocaleDateString('id-ID')
                 ];
                 csv += values.join(',') + '\n';
@@ -179,11 +174,12 @@
         }
 
         function downloadJSON() {
+            const exportData = tableData.map(({ photoIdPath, ...rest }) => rest);
             const dataToDownload = {
                 title: 'Data Formulir Pendaftaran',
-                totalRecords: tableData.length,
+                totalRecords: exportData.length,
                 exportDate: new Date().toISOString(),
-                data: tableData
+                data: exportData
             };
 
             const blob = new Blob([JSON.stringify(dataToDownload, null, 2)], { type: 'application/json' });

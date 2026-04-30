@@ -2,3 +2,15 @@ target/
 *.log
 .env
 uploads/
+
+# Backup and debug files
+*-backup.java
+*-backup copy.java
+fix_*.ps1
+fix_*.py
+*.sql
+
+# IDE
+.idea/
+*.iml
+.vscode/

@@ -2,33 +2,37 @@ package com.uhn.pmb.controller;
 
 import com.uhn.pmb.dto.UjianLinkRequest;
 import com.uhn.pmb.entity.GelombangLinkUjian;
-import com.uhn.pmb.entity.RegistrationPeriod;
-import com.uhn.pmb.repository.GelombangLinkUjianRepository;
-import com.uhn.pmb.repository.RegistrationPeriodRepository;
+import com.uhn.pmb.service.AdminUjianLinkService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * REST Controller untuk admin ujian links
+ * HANYA menggunakan AdminUjianLinkService - tidak ada repository access di sini
+ */
 @Slf4j
 @RestController
 @RequestMapping("/admin/api/ujian-links")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*", maxAge = 3600)
+@RequiredArgsConstructor
 public class AdminUjianLinkController {
 
-    @Autowired
-    private GelombangLinkUjianRepository ujianLinkRepository;
-
-    @Autowired
-    private RegistrationPeriodRepository registrationPeriodRepository;
+    private final AdminUjianLinkService ujianLinkService;
 
     /**
      * Get all ujian links
@@ -38,7 +42,6 @@ public class AdminUjianLinkController {
     @PreAuthorize("hasAnyRole('ADMIN_PUSAT', 'ADMIN_VALIDASI')")
     public ResponseEntity<?> getAllUjianLinks(Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to getAllUjianLinks");
                 return ResponseEntity.status(401).body(Map.of(
@@ -47,14 +50,11 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            List<GelombangLinkUjian> links = ujianLinkRepository.findAllByOrderByUpdatedAtDesc();
-            
+            var links = ujianLinkService.getAllLinks();
             log.info("✅ Retrieved {} ujian links", links.size());
-            
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "data", links,
-                "total", links.size()
+                "data", links
             ));
         } catch (Exception e) {
             log.error("❌ Error retrieving ujian links", e);
@@ -68,7 +68,7 @@ public class AdminUjianLinkController {
     /**
      * Get ujian link by period ID
      * GET /admin/api/ujian-links/by-period/{periodId}
-     * ✅ UPDATED: Allow CAMABA to fetch ujian link for their exam
+     * Accessible to CAMABA role as well
      */
     @GetMapping("/by-period/{periodId}")
     @PreAuthorize("hasAnyRole('ADMIN_PUSAT', 'ADMIN_VALIDASI', 'CAMABA')")
@@ -84,7 +84,7 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            Optional<GelombangLinkUjian> link = ujianLinkRepository.findByRegistrationPeriodId(periodId);
+            Optional<GelombangLinkUjian> link = ujianLinkService.getByPeriodId(periodId);
 
             if (link.isEmpty()) {
                 log.warn("⚠️ Ujian link not found for period ID: {}", periodId);
@@ -118,7 +118,6 @@ public class AdminUjianLinkController {
             @RequestBody UjianLinkRequest request,
             Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to saveUjianLink");
                 return ResponseEntity.status(401).body(Map.of(
@@ -127,55 +126,21 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            // Validate request
-            if (request.getPeriodId() == null) {
-                log.warn("❌ Invalid request: missing periodId");
-                return ResponseEntity.status(400).body(Map.of(
-                    "success", false,
-                    "message", "Period ID is required"
-                ));
-            }
-
-            // Check if period exists
-            Optional<RegistrationPeriod> period = registrationPeriodRepository.findById(request.getPeriodId());
-            if (period.isEmpty()) {
-                log.warn("❌ Period not found: {}", request.getPeriodId());
-                return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "message", "Registration period not found"
-                ));
-            }
-
-            // Check if ujian link already exists for this period (1-to-1 relationship)
-            Optional<GelombangLinkUjian> existing = ujianLinkRepository.findByRegistrationPeriodId(request.getPeriodId());
-            if (existing.isPresent()) {
-                log.warn("⚠️ Ujian link already exists for period: {}", request.getPeriodId());
-                return ResponseEntity.status(409).body(Map.of(
-                    "success", false,
-                    "message", "Ujian link already exists for this period"
-                ));
-            }
-
-            // Create and save new ujian link (either online or offline)
-            GelombangLinkUjian ujianLink = GelombangLinkUjian.builder()
-                    .registrationPeriod(period.get())
-                    .linkUjian(request.getLinkUjian())
-                    .examDate(request.getExamDate())
-                    .examPlace(request.getExamPlace())
-                    .examTime(request.getExamTime())
-                    .build();
-
-            GelombangLinkUjian saved = ujianLinkRepository.save(ujianLink);
-            
-            log.info("✅ Ujian link saved successfully for period: {}", request.getPeriodId());
+            GelombangLinkUjian saved = ujianLinkService.createLink(request);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Ujian link saved successfully",
                 "data", saved
             ));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("❌ Error saving ujian link", e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Unexpected error saving ujian link", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Error: " + e.getMessage()
@@ -193,7 +158,6 @@ public class AdminUjianLinkController {
             @RequestBody UjianLinkRequest request,
             Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to updateUjianLink");
                 return ResponseEntity.status(401).body(Map.of(
@@ -202,30 +166,7 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            // Validate request
-            if (request.getPeriodId() == null || request.getLinkUjian() == null) {
-                log.warn("❌ Invalid request: missing periodId or linkUjian");
-                return ResponseEntity.status(400).body(Map.of(
-                    "success", false,
-                    "message", "Period ID and link ujian are required"
-                ));
-            }
-
-            // Find existing ujian link
-            Optional<GelombangLinkUjian> existing = ujianLinkRepository.findByRegistrationPeriodId(request.getPeriodId());
-            if (existing.isEmpty()) {
-                log.warn("❌ Ujian link not found for period: {}", request.getPeriodId());
-                return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "message", "Ujian link not found for this period"
-                ));
-            }
-
-            // Update the ujian link
-            GelombangLinkUjian ujianLink = existing.get();
-            ujianLink.setLinkUjian(request.getLinkUjian());
-            
-            GelombangLinkUjian updated = ujianLinkRepository.save(ujianLink);
+            GelombangLinkUjian updated = ujianLinkService.updateLink(request);
             
             log.info("✅ Ujian link updated successfully for period: {}", request.getPeriodId());
             
@@ -234,8 +175,14 @@ public class AdminUjianLinkController {
                 "message", "Ujian link updated successfully",
                 "data", updated
             ));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("❌ Error updating ujian link", e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Unexpected error updating ujian link", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Error: " + e.getMessage()
@@ -248,13 +195,11 @@ public class AdminUjianLinkController {
      * DELETE /admin/api/ujian-links/{periodId}
      */
     @DeleteMapping("/{periodId}")
-    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN_PUSAT', 'ADMIN_VALIDASI')")
     public ResponseEntity<?> deleteUjianLink(
             @PathVariable Long periodId,
             Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to deleteUjianLink");
                 return ResponseEntity.status(401).body(Map.of(
@@ -263,18 +208,7 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            // Check if ujian link exists
-            Optional<GelombangLinkUjian> existing = ujianLinkRepository.findByRegistrationPeriodId(periodId);
-            if (existing.isEmpty()) {
-                log.warn("❌ Ujian link not found for period: {}", periodId);
-                return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "message", "Ujian link not found"
-                ));
-            }
-
-            // Delete the ujian link
-            ujianLinkRepository.deleteByRegistrationPeriodId(periodId);
+            ujianLinkService.deleteByPeriodId(periodId);
             
             log.info("✅ Ujian link deleted successfully for period: {}", periodId);
             
@@ -282,8 +216,14 @@ public class AdminUjianLinkController {
                 "success", true,
                 "message", "Ujian link deleted successfully"
             ));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("❌ Error deleting ujian link", e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Unexpected error deleting ujian link", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Error: " + e.getMessage()
@@ -293,7 +233,7 @@ public class AdminUjianLinkController {
 
     /**
      * Save offline exam details
-     * POST /admin/api/offline-exams
+     * POST /admin/api/ujian-links/offline-exams
      */
     @PostMapping("/offline-exams")
     @PreAuthorize("hasAnyRole('ADMIN_PUSAT', 'ADMIN_VALIDASI')")
@@ -301,7 +241,6 @@ public class AdminUjianLinkController {
             @RequestBody UjianLinkRequest request,
             Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to saveOfflineExam");
                 return ResponseEntity.status(401).body(Map.of(
@@ -310,45 +249,7 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            // Validate request
-            if (request.getPeriodId() == null || request.getExamDate() == null || 
-                request.getExamPlace() == null || request.getExamTime() == null) {
-                log.warn("❌ Invalid request: missing required fields");
-                return ResponseEntity.status(400).body(Map.of(
-                    "success", false,
-                    "message", "Period ID, exam date, place, and time are required"
-                ));
-            }
-
-            // Check if period exists
-            Optional<RegistrationPeriod> period = registrationPeriodRepository.findById(request.getPeriodId());
-            if (period.isEmpty()) {
-                log.warn("❌ Period not found: {}", request.getPeriodId());
-                return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "message", "Registration period not found"
-                ));
-            }
-
-            // Check if exam already exists for this period
-            Optional<GelombangLinkUjian> existing = ujianLinkRepository.findByRegistrationPeriodId(request.getPeriodId());
-            if (existing.isPresent()) {
-                log.warn("⚠️ Exam already exists for period: {}", request.getPeriodId());
-                return ResponseEntity.status(409).body(Map.of(
-                    "success", false,
-                    "message", "Exam already exists for this period"
-                ));
-            }
-
-            // Create and save offline exam
-            GelombangLinkUjian offlineExam = GelombangLinkUjian.builder()
-                    .registrationPeriod(period.get())
-                    .examDate(request.getExamDate())
-                    .examPlace(request.getExamPlace())
-                    .examTime(request.getExamTime())
-                    .build();
-
-            GelombangLinkUjian saved = ujianLinkRepository.save(offlineExam);
+            GelombangLinkUjian saved = ujianLinkService.createOfflineExam(request);
             
             log.info("✅ Offline exam saved successfully for period: {}", request.getPeriodId());
             
@@ -357,8 +258,14 @@ public class AdminUjianLinkController {
                 "message", "Offline exam saved successfully",
                 "data", saved
             ));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("❌ Error saving offline exam", e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Unexpected error saving offline exam", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Error: " + e.getMessage()
@@ -368,16 +275,14 @@ public class AdminUjianLinkController {
 
     /**
      * Delete offline exam
-     * DELETE /admin/api/offline-exams/{periodId}
+     * DELETE /admin/api/ujian-links/offline-exams/{periodId}
      */
     @DeleteMapping("/offline-exams/{periodId}")
-    @Transactional
     @PreAuthorize("hasAnyRole('ADMIN_PUSAT', 'ADMIN_VALIDASI')")
     public ResponseEntity<?> deleteOfflineExam(
             @PathVariable Long periodId,
             Authentication authentication) {
         try {
-            // Check authentication
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized access to deleteOfflineExam");
                 return ResponseEntity.status(401).body(Map.of(
@@ -386,18 +291,7 @@ public class AdminUjianLinkController {
                 ));
             }
 
-            // Check if exam exists
-            Optional<GelombangLinkUjian> existing = ujianLinkRepository.findByRegistrationPeriodId(periodId);
-            if (existing.isEmpty()) {
-                log.warn("❌ Offline exam not found for period: {}", periodId);
-                return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "message", "Offline exam not found"
-                ));
-            }
-
-            // Delete the offline exam
-            ujianLinkRepository.deleteByRegistrationPeriodId(periodId);
+            ujianLinkService.deleteOfflineExam(periodId);
             
             log.info("✅ Offline exam deleted successfully for period: {}", periodId);
             
@@ -405,8 +299,14 @@ public class AdminUjianLinkController {
                 "success", true,
                 "message", "Offline exam deleted successfully"
             ));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("❌ Error deleting offline exam", e);
+            return ResponseEntity.status(400).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("❌ Unexpected error deleting offline exam", e);
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "message", "Error: " + e.getMessage()

@@ -1502,6 +1502,9 @@
                 return;
             }
 
+            // Store current prodi data globally for use in handleCicilanGroupChange
+            window.currentProdiData = prodi;
+
             // Try multiple field name patterns for hargaTotal
             let hargaTotal = 0;
             let hargaTotalFieldName = '';
@@ -1534,44 +1537,138 @@
             const prices = getCicilanPrices(prodi);
             const container = document.getElementById('cicilanCheckboxContainer');
             
-            let html = '';
-            for (let i = 0; i < 6; i++) {
-                const amount = prices[i] || 0;
-                const num = i + 1;
-                const hasValue = amount > 0;
-                html += `
-                    <div class="cicilan-item" style="cursor: ${hasValue ? 'pointer' : 'default'}; opacity: ${hasValue ? '1' : '0.5'};" onclick="${hasValue ? 'toggleCicilanCheckbox(' + num + ')' : ''}">
-                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                            <input type="checkbox" id="cicilanCheck${num}" class="cicilan-checkbox" 
-                                value="${num}" ${!hasValue ? 'disabled' : ''}
-                                onchange="updateSelectedTotal()" 
-                                style="width: 20px; height: 20px; accent-color: var(--success); cursor: ${hasValue ? 'pointer' : 'default'};">
-                            <label for="cicilanCheck${num}" style="margin: 0; cursor: ${hasValue ? 'pointer' : 'default'};">Cicilan ${num}</label>
-                        </div>
-                        <span class="amount">${hasValue ? 'Rp ' + formatCurrency(amount) : '-'}</span>
-                    </div>`;
+            // Build radio group options (Cicilan 1, Cicilan 1+2, etc)
+            let html = '<div style="margin-bottom: 20px;">';
+            html += '<label style="display: block; font-weight: 600; margin-bottom: 12px; color: #333;">Pilih Jumlah Cicilan (Berurutan)</label>';
+            
+            for (let maxNum = 1; maxNum <= 6; maxNum++) {
+                // Check if all cicilan up to maxNum have values
+                let allHaveValue = true;
+                let totalForGroup = 0;
+                let cicilanLabel = '';
+                
+                for (let i = 1; i <= maxNum; i++) {
+                    if (!prices[i - 1] || prices[i - 1] <= 0) {
+                        allHaveValue = false;
+                        break;
+                    }
+                    totalForGroup += prices[i - 1];
+                    if (cicilanLabel) cicilanLabel += ' + ';
+                    cicilanLabel += i;
+                }
+                
+                if (allHaveValue) {
+                    html += `
+                        <div class="cicilan-radio-option" style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 12px; border-radius: 8px; background: #f9f9f9; cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease;">
+                            <input type="radio" id="cicilanGroup${maxNum}" name="cicilanGroup" value="${maxNum}" 
+                                   onchange="handleCicilanGroupChange(${maxNum})" 
+                                   style="width: 20px; height: 20px; accent-color: var(--success); cursor: pointer;">
+                            <label for="cicilanGroup${maxNum}" style="margin: 0; cursor: pointer; flex: 1;">
+                                <span style="font-weight: 600;">Cicilan ${cicilanLabel}</span>
+                                <br/>
+                                <span style="font-size: 13px; color: #666;">Total: Rp ${formatCurrency(totalForGroup)}</span>
+                            </label>
+                        </div>`;
+                }
             }
+            
+            html += '</div>';
+            html += '<div id="cicilanSchedulePreview" style="margin-top: 15px; display: none;"></div>';
             container.innerHTML = html;
+            
+            // Add hover effect via event listeners
+            document.querySelectorAll('.cicilan-radio-option').forEach(option => {
+                option.addEventListener('mouseenter', function() {
+                    this.style.background = '#f0f8f5';
+                    this.style.borderColor = 'var(--success)';
+                });
+                option.addEventListener('mouseleave', function() {
+                    this.style.background = '#f9f9f9';
+                    this.style.borderColor = 'transparent';
+                });
+            });
             
             updateSelectedTotal();
         }
 
-        function toggleCicilanCheckbox(num) {
-            const checkbox = document.getElementById('cicilanCheck' + num);
-            if (checkbox && !checkbox.disabled) {
-                checkbox.checked = !checkbox.checked;
-                updateSelectedTotal();
+        function handleCicilanGroupChange(maxCicilan) {
+            const prices = getCicilanPrices(currentProdiData);
+            
+            // Build selectedCicilans array: [1, 2, 3, ..., maxCicilan]
+            const selectedCicilans = [];
+            for (let i = 1; i <= maxCicilan; i++) {
+                selectedCicilans.push(i);
             }
+            
+            // Store for form submission
+            window.currentSelectedCicilans = selectedCicilans;
+            
+            // Update preview schedule
+            renderCicilanSchedule(maxCicilan, currentProdiData);
+            
+            // Update total display
+            updateSelectedTotal();
+        }
+
+        function renderCicilanSchedule(maxCicilan, prodi) {
+            const prices = getCicilanPrices(prodi);
+            const scheduleDiv = document.getElementById('cicilanSchedulePreview');
+            
+            let html = '<div style="background: #e8f5e9; border-radius: 10px; padding: 15px; border-left: 4px solid var(--success);">';
+            html += '<h6 style="margin: 0 0 12px 0; color: var(--primary); font-weight: 600;">Preview Jadwal Cicilan</h6>';
+            html += '<table style="width: 100%; font-size: 14px; border-collapse: collapse;">';
+            html += '<tr style="background: #c8e6c9; border-bottom: 1px solid #a5d6a7;">';
+            html += '<th style="padding: 8px; text-align: left; border: 1px solid #a5d6a7;">No</th>';
+            html += '<th style="padding: 8px; text-align: left; border: 1px solid #a5d6a7;">Cicilan</th>';
+            html += '<th style="padding: 8px; text-align: right; border: 1px solid #a5d6a7;">Nominal</th>';
+            html += '<th style="padding: 8px; text-align: left; border: 1px solid #a5d6a7;">Status</th>';
+            html += '</tr>';
+            
+            let totalAmount = 0;
+            for (let i = 1; i <= maxCicilan; i++) {
+                const amount = prices[i - 1] || 0;
+                totalAmount += amount;
+                const dueDate = i === 1 ? 'Segera (ASAP)' : `+${(i-1)*30} hari`;
+                
+                html += `<tr style="border-bottom: 1px solid #c8e6c9;">
+                    <td style="padding: 8px; border: 1px solid #c8e6c9;">${i}</td>
+                    <td style="padding: 8px; border: 1px solid #c8e6c9;">Cicilan ${i}</td>
+                    <td style="padding: 8px; text-align: right; border: 1px solid #c8e6c9; font-weight: 600;">Rp ${formatCurrency(amount)}</td>
+                    <td style="padding: 8px; border: 1px solid #c8e6c9;"><span style="background: #fff9c4; padding: 3px 8px; border-radius: 4px; font-size: 12px;">PENDING</span></td>
+                </tr>`;
+            }
+            
+            html += '<tr style="background: #c8e6c9; font-weight: 600;">';
+            html += `<td colspan="2" style="padding: 8px; border: 1px solid #a5d6a7;"><strong>Total</strong></td>`;
+            html += `<td style="padding: 8px; text-align: right; border: 1px solid #a5d6a7;">Rp ${formatCurrency(totalAmount)}</td>`;
+            html += '<td style="padding: 8px; border: 1px solid #a5d6a7;"></td>';
+            html += '</tr>';
+            html += '</table></div>';
+            
+            scheduleDiv.innerHTML = html;
+            scheduleDiv.style.display = 'block';
+        }
+
+        function toggleCicilanCheckbox(num) {
+            // Deprecated - kept for backward compatibility
+            // Now using radio groups instead
         }
 
         function getSelectedCicilans() {
-            const selected = [];
-            for (let i = 1; i <= 6; i++) {
-                const cb = document.getElementById('cicilanCheck' + i);
-                if (cb && cb.checked) {
-                    selected.push(i);
-                }
+            // Check which radio button is selected
+            const selectedRadio = document.querySelector('input[name="cicilanGroup"]:checked');
+            
+            if (!selectedRadio) {
+                return [];
             }
+            
+            const maxCicilan = parseInt(selectedRadio.value);
+            const selected = [];
+            
+            for (let i = 1; i <= maxCicilan; i++) {
+                selected.push(i);
+            }
+            
             return selected;
         }
 
@@ -1736,7 +1833,8 @@
                 }
 
                 if (response.ok) {
-                    const status = await response.json();
+                    const result = await response.json();
+                    const status = result.data || result; // unwrap { success: true, data: {...} }
                     cicilanData = status;
                     selectedPaymentMethod = status.paymentMethod;
                     console.log('✅ [CICILAN-CHECK] Cicilan status:', status);

@@ -954,7 +954,7 @@
             
             gallerySlides[n].classList.add('active');
             galleryDots[n].classList.add('active');
-            document.getElementById('galleryCaption').textContent = galleryTexts[n];
+            document.getElementById('galleryCaption').innerHTML = galleryTexts[n];
             
             if (!isInitial) {
                 gallerySlides[n].style.opacity = '0';

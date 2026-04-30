@@ -57,9 +57,7 @@
                     <tr>
                         <th>No</th>
                         <th>Nama</th>
-                        <th>NIK</th>
                         <th>Email</th>
-                        <th>Nomor Registrasi</th>
                         <th>BRIVA Number</th>
                         <th>BRIVA Amount</th>
                         <th>Jumlah Cicilan</th>
@@ -69,7 +67,6 @@
                         <th>Status</th>
                         <th>Dibuat</th>
                         <th>Diupdate</th>
-                        <th>Dokumen</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -109,15 +106,75 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let tableData = [];
-        let programStudiMap = {}; // Program studi ID → Name mapping
+        let cicilanCache = {}; // Student ID → Cicilan data mapping
         let documentsCache = {}; // Student ID → Documents mapping
+
+        // ===== Load Cicilan Data for a specific student =====
+        async function loadCicilanForStudent(studentId) {
+            if (cicilanCache[studentId]) {
+                return cicilanCache[studentId];
+            }
+
+            try {
+                const authToken = localStorage.getItem('authToken');
+                
+                console.log('TOKEN:', authToken);
+                
+                const response = await fetch(`/admin/api/cicilan-request?studentId=${studentId}`, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                
+                console.log('STATUS CICILAN:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('CICILAN RAW:', result);
+                    if (result.success && result.data && result.data.length > 0) {
+                        // Assume the first cicilan request has the relevant data
+                        const cicilan = result.data[0];
+                        const cicilanData = {
+                            brivaNumber: cicilan.briva || 'N/A',
+                            brivaAmount: cicilan.hargaTotal || cicilan.harga_total || 0,
+                            jumlahCicilan: cicilan.jumlahCicilan || cicilan.jumlah_cicilan || 1,
+                            status: cicilan.status || 'UNKNOWN'
+                        };
+                        cicilanCache[studentId] = cicilanData;
+                        return cicilanData;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ No cicilan data found for student:', studentId);
+            }
+            
+            cicilanCache[studentId] = { brivaNumber: 'N/A', brivaAmount: 0, jumlahCicilan: 1, status: 'UNKNOWN' };
+            return cicilanCache[studentId];
+        }
+
+        // ===== Auto-load all cicilan data after data is fetched =====
+        async function loadAllCicilanData() {
+            console.log('💰 Loading cicilan data for all students...');
+            for (let row of tableData) {
+                const studentId = row.studentId || row.student_id || row.userId || row.user_id;
+                
+                console.log('DEBUG ID:', studentId, row);
+                
+                if (studentId) {
+                    const cicilanData = await loadCicilanForStudent(studentId);
+                    // Merge cicilan data into row
+                    row.brivaNumber = cicilanData.brivaNumber;
+                    row.brivaAmount = cicilanData.brivaAmount;
+                    row.jumlahCicilan = cicilanData.jumlahCicilan;
+                    row.cicilanStatus = cicilanData.status;
+                }
+            }
+            console.log('✅ All cicilan data loaded and merged');
+        }
 
         // ===== Load Program Studi Mapping =====
         async function loadProgramStudiMapping() {
             try {
                 const authToken = localStorage.getItem('authToken') || window.authToken;
-                const response = await fetch('/admin/api/program-studi', {
+                const response = await fetch('/admin/program-studi', {
                     headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 
@@ -199,6 +256,9 @@
                 if (result.success) {
                     tableData = result.data;
                     
+                    // Auto-load all cicilan data
+                    await loadAllCicilanData();
+                    
                     // Auto-load all documents
                     await loadAllDocuments();
                     
@@ -233,9 +293,7 @@
                 tr.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${row.studentName}</td>
-                    <td>${row.nik}</td>
                     <td>${row.email}</td>
-                    <td>${row.nomorRegistrasi}</td>
                     <td><code>${row.brivaNumber}</code></td>
                     <td class="currency">${parseFloat(row.brivaAmount).toLocaleString('id-ID', {style: 'currency', currency: 'IDR'})}</td>
                     <td style="text-align: center;"><span class="badge bg-warning">${row.jumlahCicilan || 1}</span></td>
@@ -245,11 +303,6 @@
                     <td>${statusBadge}</td>
                     <td>${new Date(row.createdAt).toLocaleDateString('id-ID')}</td>
                     <td>${new Date(row.updatedAt).toLocaleDateString('id-ID')}</td>
-                    <td style="text-align: center;">
-                        <button class="btn btn-sm ${docButtonClass}" onclick="showDocumentsModal('${row.studentId}', '${row.studentName}')">
-                            <i class="fas fa-file-alt"></i> ${docCount}
-                        </button>
-                    </td>
                 `;
                 tbody.appendChild(tr);
             });

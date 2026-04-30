@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: PMB-UHN
+    runtime: java
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/pmb-system-1.0.0.jar
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: JAVA_VERSION
+        value: "21"
+      # Database - set these from your MySQL provider (e.g. Railway, PlanetScale, Aiven)
+      - key: MYSQLHOST
+        sync: false
+      - key: MYSQLPORT
+        sync: false
+      - key: MYSQLDATABASE
+        sync: false
+      - key: MYSQLUSER
+        sync: false
+      - key: MYSQLPASSWORD
+        sync: false
+      # JWT
+      - key: JWT_SECRET
+        sync: false

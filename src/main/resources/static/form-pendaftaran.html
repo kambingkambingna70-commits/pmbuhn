@@ -819,6 +819,20 @@
                                     placeholder="Ketik nama sekolah (min. 3 huruf)..." autocomplete="off">
                                 <div class="school-autocomplete-list" id="schoolAutocompleteList"></div>
                             </div>
+                            <!-- Fallback manual input section -->
+                            <div id="schoolManualInputSection" style="display: none; margin-top: 15px; padding: 15px; background: #fff8e1; border-radius: 8px; border-left: 4px solid #f39c12;">
+                                <label for="schoolOriginCustom" style="font-weight: 600; color: #e65100;">
+                                    <i class="fas fa-exclamation-circle"></i> Sekolah Tidak Ditemukan?
+                                </label>
+                                <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Silahkan input nama sekolah Anda secara manual di bawah. Data Anda akan disimpan sebagai referensi.</p>
+                                <textarea id="schoolOriginCustom" class="form-control" 
+                                    placeholder="Contoh: SMA Budi Mulia, Jakarta Timur" 
+                                    rows="2" maxlength="255"
+                                    style="font-size: 14px;"></textarea>
+                                <small class="form-text text-muted" style="display: block; margin-top: 8px;">
+                                    <i class="fas fa-info-circle"></i> Masukkan nama sekolah dan kota/provinsi (opsional)
+                                </small>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="required">Jurusan</label>
@@ -1040,17 +1054,37 @@
                     list.style.display = 'block';
 
                     searchTimeout = setTimeout(function() {
-                        fetch('https://api-sekolah-indonesia.vercel.app/sekolah/s?sekolah=' + encodeURIComponent(query) + '&perPage=50')
+                        // Search both internal DB and external API in parallel
+                        var externalPromise = fetch('https://api-sekolah-indonesia.vercel.app/sekolah/s?sekolah=' + encodeURIComponent(query) + '&perPage=50')
                             .then(function(r) { return r.json(); })
                             .then(function(data) {
-                                schoolResults = (data.dataSekolah || []).filter(function(s) {
-                                    return s.bentuk === 'SMA' || s.bentuk === 'SMK' || s.bentuk === 'MA';
-                                });
-                                renderSchoolResults(list, input);
+                                return (data.dataSekolah || [])
+                                    .filter(function(s) { return s.bentuk === 'SMA' || s.bentuk === 'SMK' || s.bentuk === 'MA'; })
+                                    .map(function(s) { return { sekolah: s.sekolah, bentuk: s.bentuk, npsn: s.npsn, kabupaten_kota: s.kabupaten_kota, propinsi: s.propinsi }; });
                             })
-                            .catch(function() {
-                                list.innerHTML = '<div class="school-autocomplete-loading" style="color:#cc0000;">Gagal memuat data. Anda bisa mengetik manual.</div>';
+                            .catch(function() { return []; });
+
+                        var internalPromise = fetch('/api/sma/search?q=' + encodeURIComponent(query))
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                return (data || []).map(function(s) {
+                                    return { sekolah: s.nama, bentuk: s.bentuk || 'SMA', npsn: s.npsn, kabupaten_kota: s.kota, propinsi: s.provinsi };
+                                });
+                            })
+                            .catch(function() { return []; });
+
+                        Promise.all([internalPromise, externalPromise]).then(function(results) {
+                            var combined = results[0].concat(results[1]);
+                            // Deduplicate by NPSN or exact name
+                            var seen = {};
+                            schoolResults = combined.filter(function(s) {
+                                var key = s.npsn || (s.sekolah + '|' + s.kabupaten_kota);
+                                if (seen[key]) return false;
+                                seen[key] = true;
+                                return true;
                             });
+                            renderSchoolResults(list, input);
+                        });
                     }, 400);
                 });
 
@@ -1096,8 +1130,10 @@
                 });
 
                 if (!sorted.length) {
-                    list.innerHTML = '<div class="school-autocomplete-loading">Tidak ditemukan dari database.</div>';
+                    list.innerHTML = '<div class="school-autocomplete-loading" style="color: #e65100; background: #fff8e1; padding: 12px;">Tidak ditemukan dari database.</div>';
+                    allowManualInput();
                 } else {
+                    hideManualInput();
                     var lastGroup = '';
                     sorted.forEach(function(school) {
                         var prov = (school.propinsi || '').trim();
@@ -1124,6 +1160,8 @@
                                 input.value = s.sekolah;
                                 document.getElementById('schoolCity').value = (s.kabupaten_kota || '').trim();
                                 document.getElementById('schoolProvince').value = (s.propinsi || '').trim();
+                                document.getElementById('schoolOriginCustom').value = '';
+                                hideManualInput();
                                 list.style.display = 'none';
                             };
                         })(school));
@@ -1139,11 +1177,31 @@
                     '<div class="school-info">Pilih ini jika sekolah Anda tidak ada dalam daftar</div>';
                 lainnya.addEventListener('click', function() {
                     list.style.display = 'none';
+                    input.value = '';
                     document.getElementById('schoolCity').value = '';
                     document.getElementById('schoolProvince').value = '';
-                    document.getElementById('schoolCity').focus();
+                    document.getElementById('schoolOriginCustom').value = '';
+                    allowManualInput();
+                    document.getElementById('schoolOriginCustom').focus();
                 });
                 list.appendChild(lainnya);
+            }
+
+            function allowManualInput() {
+                var section = document.getElementById('schoolManualInputSection');
+                if (section) {
+                    section.style.display = 'block';
+                    document.getElementById('schoolOriginCustom').disabled = false;
+                }
+            }
+
+            function hideManualInput() {
+                var section = document.getElementById('schoolManualInputSection');
+                if (section) {
+                    section.style.display = 'none';
+                    document.getElementById('schoolOriginCustom').disabled = true;
+                    document.getElementById('schoolOriginCustom').value = '';
+                }
             }
 
             function updateActive(items) {
@@ -2815,7 +2873,22 @@
                 formData.append('parentPhone', document.getElementById('parentPhone').value || '');
 
                 // ===== SCHOOL DATA =====
-                formData.append('schoolOrigin', document.getElementById('schoolOrigin').value);
+                // Handle both autocomplete (schoolOrigin) and custom manual input (schoolOriginCustom)
+                const schoolOriginValue = document.getElementById('schoolOrigin').value.trim();
+                const schoolOriginCustomValue = document.getElementById('schoolOriginCustom').value.trim();
+                
+                if (!schoolOriginValue && !schoolOriginCustomValue) {
+                    showError('<i class="fas fa-exclamation-triangle"></i> Asal sekolah harus diisi!\n\nSilahkan:\n1. Ketik minimal 3 huruf nama sekolah Anda\n2. Pilih dari hasil pencarian atau pilih "Lainnya" untuk input manual');
+                    document.getElementById('submitFormBtn').disabled = false;
+                    document.getElementById('submitFormBtn').innerHTML = originalBtnText;
+                    return;
+                }
+                
+                // Use schoolOrigin if available (from autocomplete), otherwise use custom
+                const finalSchoolOrigin = schoolOriginValue || schoolOriginCustomValue;
+                
+                formData.append('schoolOrigin', finalSchoolOrigin);
+                formData.append('schoolOriginCustom', schoolOriginCustomValue); // Also send custom if exists
                 formData.append('schoolMajor', document.getElementById('schoolMajor').value);
                 formData.append('schoolYear', document.getElementById('schoolYear').value);
                 formData.append('nisn', document.getElementById('nisn').value || '');
