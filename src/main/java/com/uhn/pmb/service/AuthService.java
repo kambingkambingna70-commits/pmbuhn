@@ -15,8 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,16 +39,19 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-
     @Value("${app.frontend.url:http://localhost:9500}")
     private String frontendUrl;
 
-    @Value("${resend.api-key:}")
-    private String resendApiKey;
+    @Value("${brevo.api.key:}")
+    private String brevoApiKey;
+
+    @Value("${brevo.sender.email:noreply@pmb-uhn.ac.id}")
+    private String fromEmail;
+
+    @Value("${brevo.sender.name:PMB HKBP Nommensen}")
+    private String senderName;
+
+    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
     @PostConstruct
     public void init() {
@@ -293,11 +294,7 @@ public class AuthService {
                 "Jika Anda tidak mendaftar, abaikan email ini.\n\n" +
                 "Terima kasih,\nTim PMB HKBP Nommensen";
 
-        if (resendApiKey != null && !resendApiKey.isEmpty()) {
-            sendViaResend(email, subject, text);
-        } else {
-            sendViaSmtp(email, subject, text);
-        }
+        sendViaBrevo(email, subject, text);
         log.info("📧 Verification email sent to: {}", email);
         log.info("🔗 Verify Link: {}", verifyLink);
     }
@@ -311,55 +308,39 @@ public class AuthService {
                 "Link ini berlaku selama 1 jam. Jika Anda tidak melakukan permintaan ini, abaikan email ini.\n\n" +
                 "Terima kasih,\nTim PMB HKBP Nommensen";
 
-        // Use Resend HTTP API if configured (for Railway/cloud where SMTP is blocked)
-        if (resendApiKey != null && !resendApiKey.isEmpty()) {
-            sendViaResend(email, subject, text);
-        } else {
-            sendViaSmtp(email, subject, text);
-        }
+        sendViaBrevo(email, subject, text);
         log.info("Reset password email sent to: {}", email);
         log.info("Reset Link: {}", resetLink);
     }
 
-    private void sendViaResend(String to, String subject, String text) {
+    private void sendViaBrevo(String to, String subject, String text) {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            log.warn("⚠️ [MAIL-SKIP] BREVO_API_KEY not set — skipping email to: {}", to);
+            return;
+        }
         try {
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(resendApiKey);
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", brevoApiKey);
+
+            String htmlText = "<pre style='font-family:Arial,sans-serif;white-space:pre-wrap'>" + text + "</pre>";
 
             Map<String, Object> body = new HashMap<>();
-            body.put("from", "PMB HKBP Nommensen <onboarding@resend.dev>");
-            body.put("to", List.of(to));
+            body.put("sender", Map.of("name", senderName, "email", fromEmail));
+            body.put("to", List.of(Map.of("email", to)));
             body.put("subject", subject);
-            body.put("text", text);
+            body.put("htmlContent", htmlText);
 
-            log.info("Resend API request - to: {}, from: onboarding@resend.dev, apiKey starts with: {}", 
-                    to, resendApiKey != null && resendApiKey.length() > 10 ? resendApiKey.substring(0, 10) + "..." : "null/short");
-
+            log.info("📧 [BREVO-SEND] Sending email to: {} | Subject: {}", to, subject);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    "https://api.resend.com/emails", request, String.class);
-            log.info("Resend API response: {} - {}", response.getStatusCode(), response.getBody());
+            ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
+            log.info("✅ [BREVO-SUCCESS] Email sent to: {} | Status: {}", to, response.getStatusCode());
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("Resend API error - status: {}, body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("❌ [BREVO-ERROR] status: {}, body: {}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new RuntimeException("Gagal mengirim email: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Failed to send email via Resend API: {}", e.getMessage(), e);
-            throw new RuntimeException("Gagal mengirim email. Silahkan coba lagi.");
-        }
-    }
-
-    private void sendViaSmtp(String to, String subject, String text) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(text);
-            mailSender.send(message);
-        } catch (Exception e) {
-            log.error("Failed to send email via SMTP to {}: {}", to, e.getMessage(), e);
+            log.error("❌ [BREVO-ERROR] Failed to send email to {}: {}", to, e.getMessage(), e);
             throw new RuntimeException("Gagal mengirim email. Silahkan coba lagi.");
         }
     }
