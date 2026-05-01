@@ -1,6 +1,9 @@
 target/
 *.log
 .env
+.env.local
+.env.*.local
+# .env.example boleh di-commit (template tanpa nilai asli)
 uploads/
 
 # Backup and debug files
