@@ -8,7 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +26,24 @@ public class SmaController {
     @GetMapping("/api/sma/search")
     public ResponseEntity<List<Sma>> searchSma(@RequestParam(defaultValue = "") String q) {
         return ResponseEntity.ok(smaService.search(q));
+    }
+
+    // Proxy ke API eksternal agar tidak kena CORS di browser (Railway/production)
+    @GetMapping("/api/sekolah/external")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<?> searchExternalSekolah(@RequestParam(defaultValue = "") String q) {
+        if (q.length() < 2) return ResponseEntity.ok(List.of());
+        try {
+            String encoded = URLEncoder.encode(q, StandardCharsets.UTF_8);
+            String url = "https://api-sekolah-indonesia.vercel.app/sekolah/s?sekolah=" + encoded + "&perPage=50";
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            Object data = response.getBody() != null ? response.getBody().getOrDefault("dataSekolah", List.of()) : List.of();
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            log.warn("External sekolah API error: {}", e.getMessage());
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     @GetMapping("/api/sma")

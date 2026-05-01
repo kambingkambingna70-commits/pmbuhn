@@ -71,134 +71,78 @@ public class EmailService {
     }
 
     public void sendRegistrationConfirmation(String email, String fullName) {
-        String subject = "Konfirmasi Registrasi - PMB HKBP Nommensen";
+        String subject = "Registrasi Berhasil - PMB HKBP Nommensen";
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif;">
-                    <h2>Selamat datang, %s!</h2>
-                    <p>Akun Anda telah berhasil terdaftar di sistem PMB HKBP Nommensen.</p>
-                    <p>Anda dapat login dengan email: <strong>%s</strong></p>
-                    <p>Silahkan akses sistem melalui portal PMB untuk melanjutkan pendaftaran.</p>
-                    <p>Terima kasih,</p>
-                    <p>Tim PMB HKBP Nommensen</p>
-                </body>
-            </html>
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Halo <strong>%s</strong>,</p>
+            <p>Akun Anda berhasil terdaftar. Silakan login dengan email <strong>%s</strong> dan lanjutkan proses pendaftaran.</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
             """, fullName, email);
-        
         sendHtmlEmail(email, subject, htmlContent);
     }
 
     public void sendVirtualAccountInfo(String email, String vaNumber, String amount, String dueDate) {
-        String subject = "Informasi Virtual Account Pembayaran PMB";
+        String subject = "Informasi Virtual Account - PMB HKBP Nommensen";
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif;">
-                    <h2>Informasi Virtual Account</h2>
-                    <p>Virtual Account Anda telah berhasil dibuat.</p>
-                    <table style="border-collapse: collapse; width: 100%%; max-width: 500px;">
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor VA:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jumlah:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">Rp %s</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jatuh Tempo:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                        </tr>
-                    </table>
-                    <p style="margin-top: 20px;"><strong>Petunjuk Pembayaran:</strong></p>
-                    <ol>
-                        <li>Transfer melalui ATM BRI atau e-Banking BRI</li>
-                        <li>Nominal harus sesuai dengan jumlah di atas</li>
-                        <li>Pastikan pembayaran selesai sebelum jatuh tempo</li>
-                    </ol>
-                    <p>Terima kasih,<br/>Tim PMB HKBP Nommensen</p>
-                </body>
-            </html>
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Pembayaran pendaftaran Anda telah diproses. Berikut informasi Virtual Account:</p>
+            <table style="border-collapse:collapse">
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Nomor VA</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Jumlah</strong></td><td style="padding:6px 12px;border:1px solid #ddd">Rp %s</td></tr>
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Jatuh Tempo</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+            </table>
+            <p>Transfer melalui ATM BRI / e-Banking BRI sesuai nominal di atas sebelum jatuh tempo.</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
             """, vaNumber, amount, dueDate);
-        
         sendHtmlEmail(email, subject, htmlContent);
     }
 
     public void sendExamNotification(String email, String examNumber, String examDate, String gformUrl) {
-        String subject = "Notifikasi: Jadwal Ujian Anda";
+        String subject = "Jadwal Ujian PMB - " + examDate;
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif;">
-                    <h2>Notifikasi Jadwal Ujian</h2>
-                    <p>Anda memiliki jadwal ujian sebagai berikut:</p>
-                    <table style="border-collapse: collapse; width: 100%%; max-width: 500px;">
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor Ujian:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tanggal/Waktu:</strong></td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                        </tr>
-                    </table>
-                    <p style="margin-top: 20px;"><strong>Link Ujian:</strong> <a href="%s">%s</a></p>
-                    <p style="color: red;"><strong>Penting:</strong> Pastikan Anda login ke akun sebelum waktu ujian dimulai.</p>
-                    <p>Terima kasih,<br/>Tim PMB HKBP Nommensen</p>
-                </body>
-            </html>
-            """, examNumber, examDate, gformUrl, "Klik di sini untuk ujian");
-        
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Anda memiliki jadwal ujian:</p>
+            <table style="border-collapse:collapse">
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Nomor Ujian</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Tanggal</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+            </table>
+            <p>Silakan login ke portal PMB dan akses menu Ujian untuk mengerjakan soal.</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
+            """, examNumber, examDate);
         sendHtmlEmail(email, subject, htmlContent);
     }
 
     public void sendResultNotification(String email, Boolean passed, String admissionNumber, String password) {
-        String subject = passed ? "Selamat! Anda Dinyatakan Lulus" : "Pengumuman Hasil Ujian PMB";
+        String subject = passed ? "Selamat! Anda Dinyatakan LULUS - PMB HKBP Nommensen" : "Pengumuman Hasil Ujian PMB";
         String htmlContent;
-        
         if (passed) {
             htmlContent = String.format("""
-                <html>
-                    <body style="font-family: Arial, sans-serif;">
-                        <h2 style="color: green;">🎉 Selamat! Anda Dinyatakan LULUS</h2>
-                        <p>Kami dengan senang hati memberitahukan bahwa Anda telah dinyatakan lulus dalam seleksi PMB.</p>
-                        <table style="border-collapse: collapse; width: 100%%; max-width: 500px;">
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor Pendaftaran:</strong></td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Password Awal:</strong></td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-                            </tr>
-                        </table>
-                        <p style="margin-top: 20px;"><strong>Langkah Selanjutnya:</strong></p>
-                        <ol>
-                            <li>Login menggunakan Nomor Pendaftaran dan password awal (tanggal lahir)</li>
-                            <li>Lengkapi formulir pendaftaran ulang</li>
-                            <li>Lakukan pembayaran cicilan</li>
-                        </ol>
-                        <p style="color: red;"><strong>Batas waktu daftar ulang:</strong> Silakan periksa portal untuk deadline.</p>
-                        <p>Terima kasih,<br/>Tim PMB HKBP Nommensen</p>
-                    </body>
-                </html>
+                <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+                <p>Selamat! Anda dinyatakan <strong>LULUS</strong> seleksi PMB HKBP Nommensen.</p>
+                <table style="border-collapse:collapse">
+                  <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Nomor Pendaftaran</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+                  <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Password Awal</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%s</td></tr>
+                </table>
+                <p>Login menggunakan Nomor Pendaftaran dan password di atas, lalu lengkapi formulir daftar ulang.</p>
+                <p>— Tim PMB HKBP Nommensen</p>
+                </body></html>
                 """, admissionNumber, password);
         } else {
             htmlContent = """
-                <html>
-                    <body style="font-family: Arial, sans-serif;">
-                        <h2>Pengumuman Hasil Ujian PMB</h2>
-                        <p>Kami dengan hormat memberitahukan hasil ujian Anda:</p>
-                        <p style="color: red; font-weight: bold; font-size: 18px;">Maaf, Anda dinyatakan TIDAK LULUS</p>
-                        <p>Anda dapat mencoba lagi pada gelombang pendaftaran berikutnya.</p>
-                        <p>Terima kasih atas partisipasi Anda,<br/>Tim PMB HKBP Nommensen</p>
-                    </body>
-                </html>
+                <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+                <p>Terima kasih telah mengikuti seleksi PMB HKBP Nommensen.</p>
+                <p>Mohon maaf, Anda belum dinyatakan lulus pada seleksi ini. Anda dapat mencoba kembali pada gelombang berikutnya.</p>
+                <p>— Tim PMB HKBP Nommensen</p>
+                </body></html>
                 """;
         }
-        
         sendHtmlEmail(email, subject, htmlContent);
     }
 
-    public void recordNotification(User user, String subject, String message, 
+    public void recordNotification(User user, String subject, String message,
                                   Notification.NotificationType type) {
         Notification notification = Notification.builder()
                 .user(user)
@@ -207,151 +151,58 @@ public class EmailService {
                 .type(type)
                 .status(Notification.NotificationStatus.PENDING)
                 .build();
-        
         notificationRepository.save(notification);
     }
 
-    /**
-     * Kirim email notifikasi formulir diapprove + token ujian
-     */
     public void sendFormApprovedEmail(String recipientEmail, String studentName, String token, String expiresAt) {
-        String subject = "✅ Formulir Anda Telah Disetujui - Token Ujian Terlampir";
+        String subject = "Formulir & Pembayaran Disetujui - Token Ujian Anda";
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <h2 style="color: #27ae60;">✅ Selamat %s!</h2>
-                    <p>Pendaftaran Anda telah <strong>disetujui</strong> oleh Admin! 🎉</p>
-                    
-                    <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                        <h3 style="color: #1a472a;">📋 TOKEN UJIAN ONLINE ANDA</h3>
-                        <p style="font-size: 18px; font-weight: bold; letter-spacing: 2px; background: white; padding: 10px; border-left: 4px solid #27ae60;">
-                            %s
-                        </p>
-                        <p><strong>Berlaku hingga:</strong> %s</p>
-                    </div>
-                    
-                    <h3 style="color: #1a472a;">📝 CARA MENGGUNAKAN TOKEN:</h3>
-                    <ol style="font-size: 14px;">
-                        <li>Buka halaman ujian: <a href="http://localhost:9500/ujian.html" style="color: #27ae60;">http://localhost:9500/ujian.html</a></li>
-                        <li>Input token di atas pada form yang tersedia</li>
-                        <li>Google Form ujian akan muncul</li>
-                        <li>Selesaikan ujian dan submit nilai Anda</li>
-                        <li>Tunggu konfirmasi hasil dari admin</li>
-                    </ol>
-                    
-                    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                        <p style="color: #ff6b6b; font-weight: bold;">
-                            ⏰ PENTING: Token hanya berlaku <strong>2 jam</strong> dari waktu ini!
-                        </p>
-                    </div>
-                    
-                    <h3 style="color: #1a472a;">📞 HUBUNGI KAMI</h3>
-                    <p>Jika ada pertanyaan, hubungi customer service:</p>
-                    <p>
-                        <strong>WhatsApp:</strong> <a href="https://wa.me/6283872746279" style="color: #27ae60;">+62-838-7274-6279</a><br/>
-                        <strong>Email:</strong> %s
-                    </p>
-                    
-                    <p style="margin-top: 30px; color: #999; font-size: 12px;">
-                        Terima kasih,<br/>
-                        <strong>Tim PMB HKBP Nommensen</strong>
-                    </p>
-                </body>
-            </html>
-            """, studentName, token, expiresAt, fromEmail);
-        
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Halo <strong>%s</strong>,</p>
+            <p>Formulir pendaftaran dan pembayaran Anda telah <strong>disetujui</strong>. Silakan lanjutkan untuk melakukan ujian.</p>
+            <p><strong>Token Ujian:</strong></p>
+            <p style="font-size:20px;font-weight:bold;letter-spacing:3px;background:#f0f0f0;padding:12px;border-left:4px solid #27ae60;display:inline-block">%s</p>
+            <p style="color:#888">Berlaku hingga: %s (2 jam)</p>
+            <p>Login ke portal PMB, masuk ke menu Ujian, dan masukkan token di atas untuk memulai.</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
+            """, studentName, token, expiresAt);
         sendHtmlEmail(recipientEmail, subject, htmlContent);
     }
 
-    /**
-     * Kirim email notifikasi formulir ditolak
-     */
     public void sendFormRejectedEmail(String recipientEmail, String studentName, String reason) {
-        String subject = "⚠️ Update Formulir Pendaftaran Anda";
+        String subject = "Update Status Formulir Pendaftaran Anda";
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <h2 style="color: #e74c3c;">⚠️ Halo %s,</h2>
-                    <p>Kami telah mereview formulir pendaftaran Anda, namun sayangnya belum dapat disetujui saat ini.</p>
-                    
-                    <div style="background: #fadbd8; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #e74c3c;">
-                        <h3 style="color: #c0392b; margin-top: 0;">ALASAN PENOLAKAN:</h3>
-                        <p style="font-size: 14px;">%s</p>
-                    </div>
-                    
-                    <h3 style="color: #1a472a;">📝 LANGKAH SELANJUTNYA:</h3>
-                    <ol style="font-size: 14px;">
-                        <li>Silakan hubungi customer service untuk diskusi lebih lanjut</li>
-                        <li>Anda dapat melakukan perbaikan pada data dan submit ulang</li>
-                        <li>Tim kami siap membantu proses perbaikan formulir Anda</li>
-                    </ol>
-                    
-                    <h3 style="color: #1a472a;">📞 HUBUNGI KAMI</h3>
-                    <p>Hubungi customer service untuk bantuan:</p>
-                    <p>
-                        <strong>WhatsApp:</strong> <a href="https://wa.me/6283872746279" style="color: #27ae60;">+62-838-7274-6279</a><br/>
-                        <strong>Email:</strong> %s
-                    </p>
-                    
-                    <p style="margin-top: 30px; color: #999; font-size: 12px;">
-                        Kami yakin Anda bisa!<br/>
-                        <strong>Tim PMB HKBP Nommensen</strong>
-                    </p>
-                </body>
-            </html>
-            """, studentName, reason, fromEmail);
-        
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Halo <strong>%s</strong>,</p>
+            <p>Formulir pendaftaran Anda belum dapat disetujui dengan alasan berikut:</p>
+            <p style="background:#fff3cd;padding:12px;border-left:4px solid #e74c3c">%s</p>
+            <p>Silakan login ke portal PMB, perbaiki data yang diperlukan, dan submit ulang. Hubungi kami jika butuh bantuan.</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
+            """, studentName, reason);
         sendHtmlEmail(recipientEmail, subject, htmlContent);
     }
 
-    /**
-     * Kirim email notifikasi hasil ujian ke mahasiswa
-     */
     public void sendExamCompletedEmail(String recipientEmail, String studentName, int score, boolean passed) {
-        String subject = passed ? "✅ Ujian Anda LULUS!" : "⚠️ Hasil Ujian";
-        String status = passed ? "LULUS 🎉" : "BELUM LULUS";
+        String subject = passed ? "Ujian Selesai - Anda LULUS!" : "Ujian Selesai - Hasil Ujian Anda";
         String htmlContent = String.format("""
-            <html>
-                <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <h2 style="color: %s;">%s Halo %s,</h2>
-                    <p>Ujian online Anda telah selesai diproses!</p>
-                    
-                    <div style="background: %s; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid %s;">
-                        <h3 style="margin-top: 0;">📊 HASIL UJIAN ANDA:</h3>
-                        <p style="font-size: 1.2rem;">
-                            <strong>Nilai:</strong> %d / 100<br/>
-                            <strong>Status:</strong> <span style="font-weight: bold;">%s</span>
-                        </p>
-                    </div>
-                    
-                    <p>%s</p>
-                    
-                    <h3 style="color: #1a472a;">📞 HUBUNGI KAMI</h3>
-                    <p>Pertanyaan? Hubungi customer service:</p>
-                    <p>
-                        <strong>WhatsApp:</strong> <a href="https://wa.me/6283872746279" style="color: #27ae60;">+62-838-7274-6279</a><br/>
-                        <strong>Email:</strong> %s
-                    </p>
-                    
-                    <p style="margin-top: 30px; color: #999; font-size: 12px;">
-                        Terima kasih,<br/>
-                        <strong>Tim PMB HKBP Nommensen</strong>
-                    </p>
-                </body>
-            </html>
-            """, 
-            passed ? "#27ae60" : "#e74c3c",
-            passed ? "✅" : "⚠️",
-            studentName,
-            passed ? "#e8f5e9" : "#fadbd8",
-            passed ? "#27ae60" : "#e74c3c",
-            score, 
-            status,
-            passed ? "Selamat! Anda lulus dan bisa lanjut ke tahap berikutnya." : 
-                    "Silakan coba lagi atau hubungi admin untuk informasi lebih lanjut.",
-            fromEmail
+            <html><body style="font-family:Arial,sans-serif;line-height:1.6">
+            <p>Halo <strong>%s</strong>,</p>
+            <p>Ujian Anda telah selesai diproses.</p>
+            <table style="border-collapse:collapse">
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Nilai</strong></td><td style="padding:6px 12px;border:1px solid #ddd">%d / 100</td></tr>
+              <tr><td style="padding:6px 12px;border:1px solid #ddd"><strong>Status</strong></td><td style="padding:6px 12px;border:1px solid #ddd"><strong>%s</strong></td></tr>
+            </table>
+            <p>%s</p>
+            <p>— Tim PMB HKBP Nommensen</p>
+            </body></html>
+            """,
+            studentName, score,
+            passed ? "LULUS ✅" : "BELUM LULUS",
+            passed ? "Selamat! Silakan login ke portal untuk melihat langkah selanjutnya."
+                   : "Anda dapat menghubungi admin untuk informasi lebih lanjut."
         );
-        
         sendHtmlEmail(recipientEmail, subject, htmlContent);
     }
 }

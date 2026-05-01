@@ -178,6 +178,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/cicilan/**").permitAll()      // ✅ Cicilan endpoints (auth checked in controller)
                 .requestMatchers("/jenis-seleksi/**").permitAll()     // ✅ PUBLIC: JENIS_SELEKSI data (needed for formula mapping)
                 .requestMatchers("/api/sma/**").permitAll()           // ✅ PUBLIC: SMA search for autocomplete in form-pendaftaran
+                .requestMatchers("/api/sekolah/**").permitAll()       // ✅ PUBLIC: Proxy ke API sekolah eksternal
                 
                 // ========== ADMIN ENDPOINTS: AUTHENTICATION REQUIRED (role checks done via @PreAuthorize) ==========
                 // /admin/periods - requires authentication (role access controlled by @PreAuthorize in controller)

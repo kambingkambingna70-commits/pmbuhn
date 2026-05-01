@@ -1054,11 +1054,11 @@
                     list.style.display = 'block';
 
                     searchTimeout = setTimeout(function() {
-                        // Search both internal DB and external API in parallel
-                        var externalPromise = fetch('https://api-sekolah-indonesia.vercel.app/sekolah/s?sekolah=' + encodeURIComponent(query) + '&perPage=50')
+                        // Search both internal DB and external (via backend proxy to avoid CORS)
+                        var externalPromise = fetch('/api/sekolah/external?q=' + encodeURIComponent(query))
                             .then(function(r) { return r.json(); })
                             .then(function(data) {
-                                return (data.dataSekolah || [])
+                                return (data || [])
                                     .filter(function(s) { return s.bentuk === 'SMA' || s.bentuk === 'SMK' || s.bentuk === 'MA'; })
                                     .map(function(s) { return { sekolah: s.sekolah, bentuk: s.bentuk, npsn: s.npsn, kabupaten_kota: s.kabupaten_kota, propinsi: s.propinsi }; });
                             })
