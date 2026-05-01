@@ -508,7 +508,7 @@
                     <div class="progress-info-title"><i class="fas fa-clipboard-list"></i> Instruksi</div>
                     <div class="progress-info-text">
                         Silakan isi formulir daftar ulang di bawah dan upload semua dokumen yang diperlukan. 
-                        Pastikan semua file dalam format PDF atau gambar (JPG/PNG) dengan ukuran maksimal 5MB.
+                        Pastikan semua file dalam format PDF atau gambar (JPG/PNG) dengan ukuran maksimal 2MB.
                     </div>
                 </div>
 
@@ -657,7 +657,7 @@
             { type: 'SKCK', name: 'SKCK', description: 'File PDF atau gambar' }
         ];
 
-        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
         const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 
         // Store uploaded files
@@ -868,7 +868,7 @@
                         <input type="file" id="file-${doc.type}" accept=".pdf,.jpg,.jpeg,.png" required>
                         <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
                         <div class="upload-text">Klik atau seret file</div>
-                        <div class="upload-hint">${doc.description} • Maksimal 5MB</div>
+                        <div class="upload-hint">${doc.description} • Maksimal 2MB</div>
                     </div>
 
                     <div class="upload-progress" id="progress-${doc.type}">
@@ -922,7 +922,7 @@
 
             // Validate file
             if (file.size > MAX_FILE_SIZE) {
-                showAlert(`File terlalu besar! Maksimal ukuran file adalah 5MB.`, 'danger');
+                showAlert(`File terlalu besar! Maksimal ukuran file adalah 2MB. File Anda: ${(file.size / 1024 / 1024).toFixed(2)}MB`, 'danger');
                 return;
             }
 

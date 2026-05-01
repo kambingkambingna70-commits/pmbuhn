@@ -2633,10 +2633,10 @@
             const file = files[0];
             log('File selected: ' + file.name + ' (' + file.size + ' bytes) for area: ' + areaId);
 
-            // Validate file size (max 5MB)
-            const maxSize = 5 * 1024 * 1024;
+            // Validate file size (max 2MB)
+            const maxSize = 2 * 1024 * 1024;
             if (file.size > maxSize) {
-                showError('Ukuran file terlalu besar. Maksimum 5MB, file Anda ' + (file.size / 1024 / 1024).toFixed(2) + 'MB');
+                showError('Ukuran file terlalu besar. Maksimum 2MB, file Anda ' + (file.size / 1024 / 1024).toFixed(2) + 'MB');
                 // Clear the file
                 e.target.value = '';
                 return;
@@ -2767,13 +2767,13 @@
                 log('Certificate file: ' + certificateFileObj.name + ' (' + certificateFileObj.size + ' bytes)');
                 
                 // Validate file sizes
-                const maxSize = 5 * 1024 * 1024;
+                const maxSize = 2 * 1024 * 1024;
                 if (photoIdFileObj.size > maxSize) {
-                    showError('Ukuran Foto Identitas terlalu besar (max 5MB)');
+                    showError('Ukuran Foto Identitas terlalu besar (max 2MB)');
                     return;
                 }
                 if (certificateFileObj.size > maxSize) {
-                    showError('Ukuran Ijazah/Sertifikat terlalu besar (max 5MB)');
+                    showError('Ukuran Ijazah/Sertifikat terlalu besar (max 2MB)');
                     return;
                 }
 
