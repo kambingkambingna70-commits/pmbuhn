@@ -17,3 +17,4 @@ fix_*.py
 .idea/
 *.iml
 .vscode/"RAILWAY_SETUP.md"  
+".env.railway.json"  
