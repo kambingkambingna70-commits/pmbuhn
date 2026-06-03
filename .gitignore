@@ -16,4 +16,4 @@ fix_*.py
 # IDE
 .idea/
 *.iml
-.vscode/
+.vscode/"RAILWAY_SETUP.md"  
